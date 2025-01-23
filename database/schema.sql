@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS User (
     modified_at DATETIME DEFAULT CURRENT_TIMESTAMP -- Track when the user profile is updated
 );
 
+CREATE INDEX IF NOT EXISTS idx_user_nickname ON User(nickname);
+CREATE INDEX IF NOT EXISTS idx_user_email ON User(email);
+
 -- Post table --
 CREATE TABLE IF NOT EXISTS Post (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,6 +26,9 @@ CREATE TABLE IF NOT EXISTS Post (
     modified_at DATETIME DEFAULT CURRENT_TIMESTAMP, -- Track post updates
     FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_post_user_id ON Post(user_id);
+CREATE INDEX IF NOT EXISTS idx_post_category ON Post(category);
 
 -- Comment table --
 CREATE TABLE IF NOT EXISTS Comment (
@@ -38,8 +44,12 @@ CREATE TABLE IF NOT EXISTS Comment (
     FOREIGN KEY (parent_comment_id) REFERENCES Comment(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
+CREATE INDEX IF NOT EXISTS idx_comment_post_id ON Comment(post_id);
+CREATE INDEX IF NOT EXISTS idx_comment_user_id ON Comment(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_parent_id ON Comment(parent_comment_id);
+
 -- Like table --
-CREATE TABLE IF NOT EXISTS Like ( -- for both posts or comments
+CREATE TABLE IF NOT EXISTS Like (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     post_id INTEGER,
     comment_id INTEGER,
@@ -50,6 +60,10 @@ CREATE TABLE IF NOT EXISTS Like ( -- for both posts or comments
     FOREIGN KEY (comment_id) REFERENCES Comment(id) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
+
+CREATE INDEX IF NOT EXISTS idx_like_post_id ON Like(post_id);
+CREATE INDEX IF NOT EXISTS idx_like_comment_id ON Like(comment_id);
+CREATE INDEX IF NOT EXISTS idx_like_user_id ON Like(user_id);
 
 -- Message table --
 CREATE TABLE IF NOT EXISTS Message (
@@ -64,24 +78,33 @@ CREATE TABLE IF NOT EXISTS Message (
     FOREIGN KEY (receiver_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Status table --
-CREATE TABLE IF NOT EXISTS OnlineStatus (
-    user_id INTEGER PRIMARY KEY,
-    is_online BOOLEAN DEFAULT FALSE,
-    last_active DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE
-);
-
--- Indexes for performance optimization (useful for queries) --
-CREATE INDEX IF NOT EXISTS idx_like_post_id ON Like(post_id);
-CREATE INDEX IF NOT EXISTS idx_like_comment_id ON Like(comment_id);
-CREATE INDEX IF NOT EXISTS idx_like_user_id ON Like(user_id);
 CREATE INDEX IF NOT EXISTS idx_message_sender_id ON Message(sender_id);
 CREATE INDEX IF NOT EXISTS idx_message_receiver_id ON Message(receiver_id);
-CREATE INDEX IF NOT EXISTS idx_post_user_id ON Post(user_id);
-CREATE INDEX IF NOT EXISTS idx_comment_post_id ON Comment(post_id);
-CREATE INDEX IF NOT EXISTS idx_comment_user_id ON Comment(user_id);
+CREATE INDEX IF NOT EXISTS idx_message_status ON Message(status);
 
--- Additional indexes for performance optimization
-CREATE INDEX IF NOT EXISTS idx_message_status ON Message(status); -- Index for message status queries
-CREATE INDEX IF NOT EXISTS idx_online_status ON OnlineStatus(is_online); -- Index for online users
+-- OnlineStatus table with session management --
+CREATE TABLE IF NOT EXISTS OnlineStatus (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,   -- Unique session identifier
+    user_id INTEGER NOT NULL,              -- Foreign key to User table
+    session_id TEXT NOT NULL UNIQUE,       -- Unique session identifier for each login
+    ip_address BLOB,                       -- IP address of the user
+    user_agent BLOB,                       -- User agent string (browser/device)
+    is_online BOOLEAN DEFAULT FALSE,       -- Online status
+    last_active DATETIME DEFAULT CURRENT_TIMESTAMP, -- Last activity timestamp
+    login_time DATETIME DEFAULT CURRENT_TIMESTAMP,  -- Login timestamp
+    logout_time DATETIME,                 -- Logout timestamp
+    FOREIGN KEY (user_id) REFERENCES User(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT unique_session_per_user UNIQUE (user_id, session_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_online_status_user_id ON OnlineStatus(user_id);
+CREATE INDEX IF NOT EXISTS idx_online_status_is_online ON OnlineStatus(is_online);
+CREATE INDEX IF NOT EXISTS idx_online_status_last_active ON OnlineStatus(last_active);
+
+-- Additional Indexes for Optimization --
+CREATE INDEX IF NOT EXISTS idx_user_created_at ON User(created_at);
+CREATE INDEX IF NOT EXISTS idx_post_created_at ON Post(created_at);
+CREATE INDEX IF NOT EXISTS idx_comment_created_at ON Comment(created_at);
+CREATE INDEX IF NOT EXISTS idx_like_created_at ON Like(created_at);
+CREATE INDEX IF NOT EXISTS idx_message_created_at ON Message(created_at);
+
