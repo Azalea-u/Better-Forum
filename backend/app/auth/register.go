@@ -1,9 +1,9 @@
 package auth
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
-	"forum/application"
 	"log"
 	"net/http"
 
@@ -20,7 +20,7 @@ type RegisterRequest struct {
 	Password  string `json:"password"`
 }
 
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+func RegisterHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -32,7 +32,7 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := RegisterUser(req); err != nil {
+	if err := RegisterUser(req, db); err != nil {
 		log.Printf("Registration failed: %v", err)
 		http.Error(w, "Registration failed", http.StatusInternalServerError)
 		return
@@ -42,13 +42,11 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("User registered successfully"))
 }
 
-func RegisterUser(req RegisterRequest) error {
+func RegisterUser(req RegisterRequest, db *sql.DB) error {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash password: %w", err)
 	}
-
-	db := application.GetDB()
 
 	_, err = db.Exec(
 		"INSERT INTO User (nickname, age, gender, first_name, last_name, email, password) VALUES (?, ?, ?, ?, ?, ?, ?)",

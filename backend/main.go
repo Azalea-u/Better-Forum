@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"forum/application"
+	"forum/app"
 	"log"
 	"net/http"
 	"os"
