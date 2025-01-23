@@ -45,6 +45,14 @@ func LoginHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
+	// set cookie
+	http.SetCookie(w, &http.Cookie{
+		Name:  "session_id",
+		Value: req.SessionID,
+		Path:  "/",
+		Expires: time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+	})
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Login successful"))

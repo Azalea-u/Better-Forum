@@ -1,6 +1,7 @@
 package application
 
 import (
+	"database/sql"
 	"forum/app/auth"
 	"net/http"
 )
@@ -22,4 +23,25 @@ func Router() *http.ServeMux {
 	})
 
 	return mux
+}
+
+func middleware(next http.Handler, db *sql.DB) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cookies, err := r.Cookie("session_id")
+		if err != nil {
+			// redirect to login page
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+		// check if the session id is valid
+		q := db.QueryRow("SELECT id FROM OnlineStatus WHERE session_id = ?", cookies.Value)
+		var id int
+		if err := q.Scan(&id); err != nil {
+			// redirect to login page
+			http.Redirect(w, r, "/login", http.StatusSeeOther)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
